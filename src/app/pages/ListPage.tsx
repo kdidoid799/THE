@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Filter, Clock } from 'lucide-react';
+import { Plus, Search, Filter, Clock, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { ItemCard } from '../components/ItemCard';
@@ -7,9 +7,24 @@ import { FilterModal, TagFilter, DurationFilter } from '../components/FilterModa
 import { storage } from '../utils/storage';
 import { initialMockData } from '../utils/mockData';
 import { Item, ItemType, DurationFilter as DurationFilterType } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { Button, Box } from '@mui/material';
 
 export default function ListPage() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  // 检查用户是否登录
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  // 如果用户未登录，显示加载状态
+  if (!user) {
+    return null;
+  }
   const [items, setItems] = useState<Item[]>([]);
   const [selectedType, setSelectedType] = useState<ItemType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,8 +160,20 @@ export default function ListPage() {
     >
       {/* 导航栏 */}
       <div className="bg-white border-b fixed top-0 left-0 right-0 z-10">
-        <div className="px-4 py-4">
-          <h1 className="text-2xl text-[#000000] text-center font-[Kumbh_Sans]">Which <span>next</span></h1>
+        <div className="px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl text-[#000000] font-[Kumbh_Sans]">Which <span>next</span></h1>
+          <Button 
+            onClick={async () => {
+              await signOut();
+              navigate('/login');
+            }}
+            startIcon={<LogOut size={16} />}
+            variant="outlined"
+            size="small"
+            sx={{ borderRadius: '9999px' }}
+          >
+            登出
+          </Button>
         </div>
       </div>
 

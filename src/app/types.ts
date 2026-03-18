@@ -16,7 +16,7 @@ export interface Item {
     name: string;
     url: string;
   }[];
-  createdAt: number;
+  createdat: number;
 }
 
 export type ItemType = 'all' | 'book' | 'movie' | 'series';

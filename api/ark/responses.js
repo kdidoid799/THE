@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.ARK_API_KEY; // 从环境变量读取
+    const apiKey = process.env.VITE_ARK_API_KEY; // 从环境变量读取
     const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/responses', {
       method: 'POST',
       headers: {

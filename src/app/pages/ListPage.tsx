@@ -208,7 +208,7 @@ export default function ListPage() {
               if (a.status === 'watched' && b.status !== 'watched') return 1;
               if (a.status !== 'watched' && b.status === 'watched') return -1;
               // 按照创建时间倒序排序（最近的在前）
-              return b.createdAt - a.createdAt;
+              return b.createdat - a.createdat;
             })
             .map((item) => (
               <ItemCard key={item.id} item={item} onToggleStatus={handleToggleStatus} onDelete={handleDeleteItem} />

@@ -75,7 +75,7 @@ export const initialMockData: Item[] = [
     reason: '朋友提到的，听起来不错',
     tags: [],
     links: [],
-    createdAt: Date.now() - 86400000 * 3,
+    createdat: Date.now() - 86400000 * 3,
   },
   {
     id: '5',
@@ -88,7 +88,7 @@ export const initialMockData: Item[] = [
     reason: '第一部很震撼，期待续集',
     tags: ['科幻', '史诗'],
     links: [],
-    createdAt: Date.now() - 86400000 * 4,
+    createdat: Date.now() - 86400000 * 4,
   },
 ];
 

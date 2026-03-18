@@ -314,7 +314,7 @@ export default function CreatePage() {
 
     try {
       console.log('[summarizeVoiceContent] 开始生成标题和理由', { content, apiKey: !!apiKey });
-      const response = await fetch('/api/ark/responses', {
+      const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -328,8 +328,7 @@ export default function CreatePage() {
               content: [
                 {
                   type: 'input_text',
-                  text: `你是一个信息整理助手。根据用户提供的语音识别内容，分析并提取出作品的标题和推荐理由。标题应该只包含作品的名字，不要添加类型（如电视剧、电影、书等），也不要添加书名号《》。理由应该概括用户的主要想法。只返回JSON格式，包含title和reason两个字段。\n内容: ${content}`,
-
+                  text: `你是一个信息整理助手。根据用户提供的语音识别内容，分析并提取出作品的标题和推荐理由。标题应该只包含作品的名字，不要添加类型（如电视剧、电影、书等），也不要添加书名号《》。理由应该概括出推荐的核心原因，保持简洁。\n\n请以JSON格式输出，包含两个字段：title（标题）和reason（理由）。\n\n示例输出：\n{"title": "流浪地球2", "reason": "国产科幻电影的里程碑，特效震撼，剧情紧凑，充满家国情怀"}\n\n内容：${content}`,
                 },
               ],
             },

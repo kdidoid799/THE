@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { storage } from '../utils/storage';
 import { mockMatchItem, generateDetailedContent } from '../utils/mockData';
-import { Item } from '../types';
+import { Item, ItemType } from '../types';
 
 const typeLabels = {
   book: '书',
@@ -236,7 +236,7 @@ export default function DetailPage() {
                 </button>
               </div>
               <ul className="space-y-2">
-                {item.keyPoints.map((point, index) => (
+                {(item.keyPoints || []).map((point, index) => (
                   <li key={index} className="flex gap-3 text-sm text-gray-700 pl-2">
                     <span className="text-gray-400">•</span>
                     <span>{point}</span>

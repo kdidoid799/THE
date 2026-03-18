@@ -7,17 +7,27 @@ export const storage = {
       const { data, error } = await supabase
         .from('items')
         .select('*')
-        .order('createdat', { ascending: false });
+        .order('createdAt', { ascending: false });
       
       if (error) {
         console.error('Error fetching items:', error);
         return [];
       }
       
-      // 确保使用正确的字段名
+      // 确保使用正确的字段名和所有必填字段
       return (data || []).map(item => ({
-        ...item,
-        createdat: item.createdat
+        id: item.id,
+        title: item.title || '',
+        type: item.type || 'movie',
+        status: item.status || 'unwatched',
+        matchStatus: item.matchStatus || 'unidentified',
+        duration: item.duration || 0,
+        keyPoints: item.keyPoints || [],
+        reason: item.reason || '',
+        tags: item.tags || [],
+        source: item.source,
+        links: item.links || [],
+        createdat: item.createdAt ? new Date(item.createdAt).getTime() : Date.now()
       }));
     } catch (error) {
       console.error('Error in getItems:', error);
@@ -27,11 +37,23 @@ export const storage = {
 
   async addItem(item: Item): Promise<void> {
     try {
-      // 确保使用正确的字段名
+      // 确保只插入数据库中存在的字段
       const itemWithCorrectField = {
-        ...item,
-        createdat: item.createdat
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        status: item.status,
+        matchStatus: item.matchStatus,
+        duration: item.duration,
+        keyPoints: item.keyPoints,
+        reason: item.reason,
+        tags: item.tags,
+        source: item.source,
+        links: item.links
+        // 不需要指定createdAt，数据库会自动设置默认值
       };
+      
+      console.log('Adding item:', itemWithCorrectField);
       
       const { error } = await supabase
         .from('items')
@@ -39,6 +61,8 @@ export const storage = {
       
       if (error) {
         console.error('Error adding item:', error);
+      } else {
+        console.log('Item added successfully');
       }
     } catch (error) {
       console.error('Error in addItem:', error);
@@ -59,13 +83,20 @@ export const storage = {
         return;
       }
       
+      // 确保项目存在
+      if (!currentItem) {
+        console.error('Item not found for update:', id);
+        return;
+      }
+      
+      // 准备更新数据，确保包含所有需要的字段
       let updateData = { ...updates };
       
       // 特殊处理links字段，确保用户输入的链接不会被覆盖
-      if (updates.links && currentItem.links && currentItem.links.length > 0) {
+      if (updateData.links && currentItem.links && currentItem.links.length > 0) {
         // 合并链接：保留用户输入的链接，添加系统生成的平台链接
         const userLinks = currentItem.links;
-        const platformLinks = updates.links;
+        const platformLinks = updateData.links;
         // 去重：避免重复的链接
         const combinedLinks = [...userLinks];
         platformLinks.forEach(platformLink => {
@@ -73,14 +104,11 @@ export const storage = {
             combinedLinks.push(platformLink);
           }
         });
-        updateData = { ...updates, links: combinedLinks };
+        updateData = { ...updateData, links: combinedLinks };
       }
       
-      // 确保使用正确的字段名
-      updateData = {
-        ...updateData,
-        createdat: updateData.createdat || currentItem.createdat
-      };
+      // 移除createdat字段，因为数据库会自动处理
+      delete updateData.createdat;
       
       const { error } = await supabase
         .from('items')
@@ -123,11 +151,21 @@ export const storage = {
         return undefined;
       }
       
-      // 确保使用正确的字段名
+      // 确保使用正确的字段名和所有必填字段
       if (data) {
         return {
-          ...data,
-          createdat: data.createdat
+          id: data.id,
+          title: data.title || '',
+          type: data.type || 'movie',
+          status: data.status || 'unwatched',
+          matchStatus: data.matchStatus || 'unidentified',
+          duration: data.duration || 0,
+          keyPoints: data.keyPoints || [],
+          reason: data.reason || '',
+          tags: data.tags || [],
+          source: data.source,
+          links: data.links || [],
+          createdat: data.createdAt ? new Date(data.createdAt).getTime() : Date.now()
         };
       }
       

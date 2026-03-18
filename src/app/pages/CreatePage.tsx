@@ -76,9 +76,15 @@ export default function CreatePage() {
     for (const proxyUrl of proxies) {
       try {
         console.log('[fetchWebContent] 开始抓取网页内容', url, '使用代理', proxyUrl);
+        // 使用AbortController实现超时
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+        
         const response = await fetch(proxyUrl, {
-          timeout: 10000, // 10秒超时
+          signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
           console.error('[fetchWebContent] 请求失败', response.status, '尝试下一个代理');
@@ -122,7 +128,7 @@ export default function CreatePage() {
     let finalTitle = title.trim();
     let finalReason = reasonOrLink.trim();
     let linkName = '链接';
-    let webContent = null;
+    let webContent: { title: string; description: string } = { title: '', description: '' };
     
     // 检查是否是链接
     const isLink = /^https?:\/\//i.test(reasonOrLink.trim());
@@ -143,9 +149,8 @@ export default function CreatePage() {
       if (webContent.description && webContent.description !== reasonOrLink.trim()) {
         finalReason = webContent.description;
         console.log('[handleSave] 使用抓取到的描述:', finalReason);
-      } else {
-        finalReason = '';
       }
+      // 不需要else分支，因为webContent始终有值
     } else if (!finalTitle) {
       // 如果不是链接且没有标题，使用链接提取逻辑
       finalTitle = extractTitleFromLink(reasonOrLink.trim()) || '未命名';
@@ -191,19 +196,27 @@ export default function CreatePage() {
     };
 
     // 立即保存到Supabase
-    await storage.addItem(newItem);
-
-    // 模拟后台匹配
     try {
-      const updates = await mockMatchItem(finalTitle, inferredType);
-      await storage.updateItem(newItem.id, updates);
-    } catch (error) {
-      console.error('匹配失败:', error);
-      storage.updateItem(newItem.id, { matchStatus: 'failed' });
-    }
+      await storage.addItem(newItem);
+      console.log('保存成功');
 
-    setIsSaving(false);
-    navigate('/');
+      // 模拟后台匹配
+      try {
+        const updates = await mockMatchItem(finalTitle, inferredType);
+        await storage.updateItem(newItem.id, updates);
+        console.log('匹配成功');
+      } catch (error) {
+        console.error('匹配失败:', error);
+        await storage.updateItem(newItem.id, { matchStatus: 'failed' });
+      }
+
+      setIsSaving(false);
+      navigate('/');
+    } catch (error) {
+      console.error('保存失败:', error);
+      alert(`保存失败: ${error.message || '未知错误'}`);
+      setIsSaving(false);
+    }
   };
 
   // 语音识别相关状态
@@ -219,9 +232,17 @@ export default function CreatePage() {
       setIsRecording(false);
     } else {
       try {
+        // 为SpeechRecognition添加类型声明
+        interface WindowSpeechRecognition extends Window {
+          SpeechRecognition?: any;
+          webkitSpeechRecognition?: any;
+        }
+        
+        const windowWithSpeech = window as WindowSpeechRecognition;
+        
         // 检查浏览器是否支持语音识别
-        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if ('SpeechRecognition' in windowWithSpeech || 'webkitSpeechRecognition' in windowWithSpeech) {
+          const SpeechRecognition = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
           const newRecognition = new SpeechRecognition();
           
           newRecognition.lang = 'zh-CN';
@@ -274,9 +295,16 @@ export default function CreatePage() {
     }
   };
   
+  // 为ImportMeta添加类型声明
+  interface ImportMetaWithEnv extends ImportMeta {
+    env: {
+      VITE_ARK_API_KEY?: string;
+    };
+  }
+  
   // 根据语音识别内容生成标题和理由
   const summarizeVoiceContent = async (content: string): Promise<{ title: string; reason: string }> => {
-    const apiKey = import.meta.env.VITE_ARK_API_KEY;
+    const apiKey = (import.meta as ImportMetaWithEnv).env.VITE_ARK_API_KEY;
 
     // 没有配置 key 时，直接返回原始内容
     if (!apiKey) {

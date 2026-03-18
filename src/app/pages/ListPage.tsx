@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Search, Filter, Clock, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { ItemCard } from '../components/ItemCard';
 import { FilterModal, TagFilter, DurationFilter } from '../components/FilterModal';
@@ -12,6 +12,7 @@ import { Button, Box } from '@mui/material';
 
 export default function ListPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
 
   // 检查用户是否登录
@@ -59,9 +60,9 @@ export default function ListPage() {
     }
   };
 
-  // 初始化数据
+  // 初始化数据和路由变化时重新获取
   useEffect(() => {
-    const initData = async () => {
+    const fetchItems = async () => {
       const storedItems = await storage.getItems();
       if (storedItems.length === 0) {
         // 如果没有数据，使用模拟数据初始化
@@ -74,8 +75,8 @@ export default function ListPage() {
       }
     };
     
-    initData();
-  }, []);
+    fetchItems();
+  }, [location]);
 
   // 切换观看状态
   const handleToggleStatus = async (id: string) => {

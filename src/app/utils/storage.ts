@@ -14,11 +14,10 @@ export const storage = {
         return [];
       }
       
-      // 转换返回的数据，确保使用正确的字段名
+      // 确保使用正确的字段名
       return (data || []).map(item => ({
         ...item,
-        createdat: item.createdAt || item.createdat,
-        createdAt: undefined
+        createdat: item.createdat
       }));
     } catch (error) {
       console.error('Error in getItems:', error);
@@ -31,8 +30,7 @@ export const storage = {
       // 确保使用正确的字段名
       const itemWithCorrectField = {
         ...item,
-        createdat: item.createdat || item.createdAt,
-        createdAt: undefined
+        createdat: item.createdat
       };
       
       const { error } = await supabase
@@ -81,8 +79,7 @@ export const storage = {
       // 确保使用正确的字段名
       updateData = {
         ...updateData,
-        createdat: updateData.createdat || updateData.createdAt || currentItem.createdat || currentItem.createdAt,
-        createdAt: undefined
+        createdat: updateData.createdat || currentItem.createdat
       };
       
       const { error } = await supabase
@@ -126,12 +123,11 @@ export const storage = {
         return undefined;
       }
       
-      // 转换返回的数据，确保使用正确的字段名
+      // 确保使用正确的字段名
       if (data) {
         return {
           ...data,
-          createdat: data.createdAt || data.createdat,
-          createdAt: undefined
+          createdat: data.createdat
         };
       }
       

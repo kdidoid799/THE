@@ -1,20 +1,35 @@
 import { Item } from '../types';
 import { supabase } from './supabase';
 
+// 转换item对象，确保使用正确的列名
+const transformItem = (item: Item | Partial<Item>): any => {
+  const transformed = { ...item };
+  if ('createdat' in transformed) {
+    transformed.createdAt = transformed.createdat;
+    delete transformed.createdat;
+  }
+  return transformed;
+};
+
 export const storage = {
   async getItems(): Promise<Item[]> {
     try {
       const { data, error } = await supabase
         .from('items')
         .select('*')
-        .order('createdAt', { ascending: false });
+        .order('createdat', { ascending: false });
       
       if (error) {
         console.error('Error fetching items:', error);
         return [];
       }
       
-      return data || [];
+      // 转换返回的数据，确保使用正确的字段名
+      return (data || []).map(item => ({
+        ...item,
+        createdat: item.createdAt || item.createdat,
+        createdAt: undefined
+      }));
     } catch (error) {
       console.error('Error in getItems:', error);
       return [];
@@ -23,9 +38,10 @@ export const storage = {
 
   async addItem(item: Item): Promise<void> {
     try {
+      const transformedItem = transformItem(item);
       const { error } = await supabase
         .from('items')
-        .insert(item);
+        .insert(transformedItem);
       
       if (error) {
         console.error('Error adding item:', error);
@@ -66,9 +82,10 @@ export const storage = {
         updateData = { ...updates, links: combinedLinks };
       }
       
+      const transformedUpdates = transformItem(updateData);
       const { error } = await supabase
         .from('items')
-        .update(updateData)
+        .update(transformedUpdates)
         .eq('id', id);
       
       if (error) {
@@ -105,6 +122,15 @@ export const storage = {
       if (error) {
         console.error('Error fetching item by id:', error);
         return undefined;
+      }
+      
+      // 转换返回的数据，确保使用正确的字段名
+      if (data) {
+        return {
+          ...data,
+          createdat: data.createdAt || data.createdat,
+          createdAt: undefined
+        };
       }
       
       return data;

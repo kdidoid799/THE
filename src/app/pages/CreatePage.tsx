@@ -187,7 +187,7 @@ export default function CreatePage() {
       reason: finalReason || '暂无原因',
       tags: [], // 初始为空数组，避免显示不必要的标签
       links: isLink ? [{ name: linkName, url: reasonOrLink.trim() }] : [],
-      createdAt: Date.now(),
+      createdat: Date.now(),
     };
 
     // 立即保存到Supabase

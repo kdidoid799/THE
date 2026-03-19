@@ -27,6 +27,7 @@ export const storage = {
         tags: item.tags || [],
         source: item.source,
         links: item.links || [],
+        chapters: item.chapters || [],
         createdat: item.createdAt ? new Date(item.createdAt).getTime() : Date.now()
       }));
     } catch (error) {
@@ -49,7 +50,8 @@ export const storage = {
         reason: item.reason,
         tags: item.tags,
         source: item.source,
-        links: item.links
+        links: item.links,
+        chapters: item.chapters || []
         // 不需要指定createdAt，数据库会自动设置默认值
       };
       
@@ -165,6 +167,7 @@ export const storage = {
           tags: data.tags || [],
           source: data.source,
           links: data.links || [],
+          chapters: data.chapters || [],
           createdat: data.createdAt ? new Date(data.createdAt).getTime() : Date.now()
         };
       }

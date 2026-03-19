@@ -23,11 +23,7 @@ export default defineConfig({
   // 配置代理解决CORS问题
   server: {
     proxy: {
-      '/api/ark': {
-        target: 'https://ark.cn-beijing.volces.com/api/v3',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/ark/, ''),
-      },
+      // 移除/api/ark代理，让请求经过本地API路由处理
     },
   },
 

@@ -1,21 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { X, Mic } from 'lucide-react';
-import { SegmentedControl } from '../components/SegmentedControl';
+import { X } from 'lucide-react';
 import { PageTransition } from '../components/PageTransition';
 import { storage } from '../utils/storage';
 import { mockMatchItem } from '../utils/mockData';
 import { Item } from '../types';
 import { inferItemType } from '../utils/inferItemType';
 
-type InputMode = 'text' | 'voice';
-
 export default function CreatePage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<InputMode>('text');
   const [title, setTitle] = useState('');
   const [reasonOrLink, setReasonOrLink] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // 从链接中提取标题的函数
@@ -220,184 +215,7 @@ export default function CreatePage() {
     }
   };
 
-  // 语音识别相关状态
-  const [recognition, setRecognition] = useState<any>(null);
-  const [recognizedText, setRecognizedText] = useState(''); // 存储识别的原始文字
-  const [isProcessing, setIsProcessing] = useState(false); // 处理AI总结的加载状态
-  
-  const handleVoiceRecord = async () => {
-    if (isRecording) {
-      // 停止语音识别
-      if (recognition) {
-        recognition.stop();
-      }
-      setIsRecording(false);
-    } else {
-      try {
-        // 为SpeechRecognition添加类型声明
-        interface WindowSpeechRecognition extends Window {
-          SpeechRecognition?: any;
-          webkitSpeechRecognition?: any;
-        }
-        
-        const windowWithSpeech = window as WindowSpeechRecognition;
-        
-        // 检查浏览器是否支持语音识别
-        if ('SpeechRecognition' in windowWithSpeech || 'webkitSpeechRecognition' in windowWithSpeech) {
-          const SpeechRecognition = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
-          const newRecognition = new SpeechRecognition();
-          
-          newRecognition.lang = 'zh-CN';
-          newRecognition.continuous = false;
-          newRecognition.interimResults = true; // 启用实时识别
-          
-          // 实时识别结果处理
-          newRecognition.onresult = async (event: any) => {
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-              const transcript = event.results[i][0].transcript;
-              console.log('实时语音识别结果:', transcript);
-              
-              // 实时显示识别的文字
-              setRecognizedText(transcript);
-              
-              // 如果识别已完成
-              if (event.results[i].isFinal) {
-                // 调用AI总结生成标题和理由
-                setIsProcessing(true);
-                const summary = await summarizeVoiceContent(transcript);
-                setTitle(summary.title);
-                setReasonOrLink(summary.reason);
-                setIsProcessing(false);
-              }
-            }
-          };
-          
-          newRecognition.onerror = (event: any) => {
-            console.error('语音识别错误:', event.error);
-            setIsRecording(false);
-          };
-          
-          newRecognition.onend = () => {
-            setIsRecording(false);
-          };
-          
-          // 保存识别实例
-          setRecognition(newRecognition);
-          
-          // 开始语音识别
-          newRecognition.start();
-          setIsRecording(true);
-        } else {
-          // 浏览器不支持语音识别
-          alert('您的浏览器不支持语音识别功能');
-        }
-      } catch (error) {
-        console.error('语音识别错误:', error);
-        alert('无法启动语音识别，请检查麦克风权限');
-        setIsRecording(false);
-      }
-    }
-  };
-  
-  // 为ImportMeta添加类型声明
-  interface ImportMetaWithEnv extends ImportMeta {
-    env: {
-      VITE_ARK_API_KEY?: string;
-    };
-  }
-  
-  // 根据语音识别内容生成标题和理由
-  const summarizeVoiceContent = async (content: string): Promise<{ title: string; reason: string }> => {
-    const apiKey = (import.meta as ImportMetaWithEnv).env.VITE_ARK_API_KEY;
 
-    // 没有配置 key 时，直接返回原始内容
-    if (!apiKey) {
-      console.warn('VITE_ARK_API_KEY 未配置，跳过AI总结');
-      return { title: content, reason: '由语音识别生成' };
-    }
-
-    try {
-      console.log('[summarizeVoiceContent] 开始生成标题和理由', { content, apiKey: !!apiKey });
-      
-      // 简化提示词，让模型更快理解任务
-      const prompt = `提取标题和理由。标题只包含作品名，无类型无书名号。理由简洁。JSON格式：{"title": "", "reason": ""}。内容：${content}`;
-      
-      const response = await fetch('/api/ark/responses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // 不再直接发送API Key，而是通过Serverless Function处理
-        body: JSON.stringify({
-          model: 'doubao-seed-2-0-pro-260215',
-          input: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('AI总结请求失败', response.status);
-        return { title: content, reason: '由语音识别生成' };
-      }
-
-      const data = await response.json();
-      let summaryContent: string | undefined;
-
-      // 尝试从不同路径获取响应内容
-      if (data.output?.text) {
-        summaryContent = data.output.text.trim();
-      } else if (data.choices?.[0]?.message?.content) {
-        summaryContent = data.choices[0].message.content.trim();
-      } else if (Array.isArray(data.content) && data.content[0]?.type === 'output_text' && data.content[0]?.text) {
-        summaryContent = data.content[0].text.trim();
-      } else if (Array.isArray(data.message?.content) && data.message.content[0]?.type === 'output_text' && data.message.content[0]?.text) {
-        summaryContent = data.message.content[0].text.trim();
-      } else if (Array.isArray(data.output)) {
-        const messageOutput = data.output.find((item: any) => item.type === 'message');
-        if (messageOutput && Array.isArray(messageOutput.content)) {
-          const outputText = messageOutput.content.find((item: any) => item.type === 'output_text');
-          if (outputText && outputText.text) {
-            summaryContent = outputText.text.trim();
-          }
-        }
-      }
-
-      if (!summaryContent) {
-        console.error('无法获取AI总结内容');
-        return { title: content, reason: '由语音识别生成' };
-      }
-
-      // 清理响应内容中的多余反引号
-      const cleanedContent = summaryContent.replace(/`/g, '');
-      let parsed: any = null;
-
-      try {
-        parsed = JSON.parse(cleanedContent);
-      } catch (e) {
-        console.error('JSON解析失败', e);
-        return { title: content, reason: '由语音识别生成' };
-      }
-
-      return {
-        title: parsed.title || content,
-        reason: parsed.reason || '由语音识别生成',
-      };
-    } catch (error) {
-      console.error('AI总结错误', error);
-      return { title: content, reason: '由语音识别生成' };
-    }
-  };
-
-  // 处理音频文件识别（备用方案）
 
 
   return (
@@ -418,134 +236,36 @@ export default function CreatePage() {
       </div>
 
       <div className="px-4 py-6 space-y-6 pt-20">
-        {/* 模式切换 */}
-        <SegmentedControl
-          options={[
-            { value: 'text', label: '文本' },
-            { value: 'voice', label: '语音' },
-          ]}
-          value={mode}
-          onChange={(value) => setMode(value as InputMode)}
-        />
-
-        {mode === 'text' ? (
-          /* 文本模式 */
-          <div className="space-y-4">
-            {/* 标题输入 */}
-            <div className="bg-white rounded-lg p-4">
-              <label className="block font-medium text-gray-900 mb-2">
-                标题
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="输入片名/书名（可选）"
-                className="w-full h-12 px-4 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* 原因或链接 */}
-            <div className="bg-white rounded-lg p-4">
-              <label className="block font-medium text-gray-900 mb-2">
-                一句话原因或粘贴链接
-              </label>
-              <textarea
-                value={reasonOrLink}
-                onChange={(e) => setReasonOrLink(e.target.value)}
-                placeholder="为什么想看？或粘贴小红书/豆瓣链接"
-                className="w-full min-h-[120px] px-4 py-3 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                rows={4}
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                支持粘贴小红书/豆瓣等链接，自动提取标题和原因
-              </p>
-            </div>
+        {/* 文本输入区域 */}
+        <div className="space-y-4">
+          {/* 标题输入 */}
+          <div className="bg-white rounded-lg p-4">
+            <label className="block font-medium text-gray-900 mb-2">
+              标题
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="输入片名/书名"
+              className="w-full h-12 px-4 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-        ) : (
-          /* 语音模式 */
-          <div className="space-y-4">
-            {/* 录音按钮 */}
-            <div className="bg-white rounded-lg p-8 flex flex-col items-center">
-              <button
-                onClick={handleVoiceRecord}
-                disabled={isProcessing}
-                className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
-                  isRecording
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : isProcessing
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600'
-                } text-white shadow-lg`}
-              >
-                <Mic size={40} />
-              </button>
-              <p className="mt-4 text-sm text-gray-600">
-                  {isRecording ? '正在录音...' : isProcessing ? 'AI正在处理...' : '点击开始录音'}
-                </p>
-                <p className="mt-2 text-xs text-gray-500 text-center">
-                  {isRecording 
-                    ? '请说出作品名称和想看的原因' 
-                    : isProcessing
-                    ? '正在分析语音内容...' 
-                    : '例如："流浪地球3，想看看中国科幻的新高度"'}
-                </p>
-              {/* 显示识别的文字 */}
-              {recognizedText && !isProcessing && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-md w-full max-w-sm">
-                  <p className="text-sm text-gray-800">{recognizedText}</p>
-                </div>
-              )}
-            </div>
 
-            {/* 加载状态 */}
-            {isProcessing && (
-              <div className="bg-white rounded-lg p-6 flex flex-col items-center">
-                <div className="flex justify-center space-x-2">
-                  {[...Array(3)].map((_, index) => (
-                    <div
-                      key={index}
-                      className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
-                      style={{ animationDelay: `${index * 0.2}s` }}
-                    />
-                  ))}
-                </div>
-                <p className="mt-3 text-sm text-gray-600">正在分析语音内容...</p>
-              </div>
-            )}
-
-            {/* 识别结果 */}
-            {(title || reasonOrLink) && !isProcessing && (
-              <>
-                <div className="bg-white rounded-lg p-4">
-                  <label className="block font-medium text-gray-900 mb-2">
-                    标题
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="由语音识别填入，可修改"
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="bg-white rounded-lg p-4">
-                  <label className="block font-medium text-gray-900 mb-2">
-                    一句话原因
-                  </label>
-                  <textarea
-                    value={reasonOrLink}
-                    onChange={(e) => setReasonOrLink(e.target.value)}
-                    placeholder="由语音识别填入，可修改"
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    rows={4}
-                  />
-                </div>
-              </>
-            )}
+          {/* 原因或链接 */}
+          <div className="bg-white rounded-lg p-4">
+            <label className="block font-medium text-gray-900 mb-2">
+              一句话原因或粘贴链接
+            </label>
+            <textarea
+              value={reasonOrLink}
+              onChange={(e) => setReasonOrLink(e.target.value)}
+              placeholder="为什么想看？"
+              className="w-full min-h-[120px] px-4 py-3 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              rows={4}
+            />
           </div>
-        )}
+        </div>
 
         {/* 保存按钮 */}
         <button

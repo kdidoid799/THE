@@ -9,6 +9,7 @@ import { initialMockData } from '../utils/mockData';
 import { Item, ItemType, DurationFilter as DurationFilterType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Box } from '@mui/material';
+import { PageTransition } from '../components/PageTransition';
 
 export default function ListPage() {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export default function ListPage() {
   const [durationFilter, setDurationFilter] = useState<DurationFilterType>('all');
   const [showTagFilter, setShowTagFilter] = useState(false);
   const [showDurationFilter, setShowDurationFilter] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // 触摸事件处理
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -63,15 +65,20 @@ export default function ListPage() {
   // 初始化数据和路由变化时重新获取
   useEffect(() => {
     const fetchItems = async () => {
-      const storedItems = await storage.getItems();
-      if (storedItems.length === 0) {
-        // 如果没有数据，使用模拟数据初始化
-        for (const item of initialMockData) {
-          await storage.addItem(item);
+      setIsLoading(true);
+      try {
+        const storedItems = await storage.getItems();
+        if (storedItems.length === 0) {
+          // 如果没有数据，使用模拟数据初始化
+          for (const item of initialMockData) {
+            await storage.addItem(item);
+          }
+          setItems(initialMockData);
+        } else {
+          setItems(storedItems);
         }
-        setItems(initialMockData);
-      } else {
-        setItems(storedItems);
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -154,11 +161,12 @@ export default function ListPage() {
   };
 
   return (
-    <div 
-      className="min-h-screen bg-gray-50 pb-20"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-    >
+    <PageTransition isLoading={isLoading}>
+      <div 
+        className="min-h-screen bg-gray-50 pb-20"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+      >
       {/* 导航栏 */}
       <div className="bg-white border-b fixed top-0 left-0 right-0 z-10">
         <div className="px-4 py-4 flex justify-between items-center">
@@ -283,6 +291,7 @@ export default function ListPage() {
           }}
         />
       </FilterModal>
-    </div>
+      </div>
+    </PageTransition>
   );
 }

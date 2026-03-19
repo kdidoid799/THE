@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { X, Mic } from 'lucide-react';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { PageTransition } from '../components/PageTransition';
 import { storage } from '../utils/storage';
 import { mockMatchItem } from '../utils/mockData';
 import { Item } from '../types';
@@ -222,6 +223,7 @@ export default function CreatePage() {
   // 语音识别相关状态
   const [recognition, setRecognition] = useState<any>(null);
   const [recognizedText, setRecognizedText] = useState(''); // 存储识别的原始文字
+  const [isProcessing, setIsProcessing] = useState(false); // 处理AI总结的加载状态
   
   const handleVoiceRecord = async () => {
     if (isRecording) {
@@ -261,9 +263,11 @@ export default function CreatePage() {
               // 如果识别已完成
               if (event.results[i].isFinal) {
                 // 调用AI总结生成标题和理由
+                setIsProcessing(true);
                 const summary = await summarizeVoiceContent(transcript);
                 setTitle(summary.title);
                 setReasonOrLink(summary.reason);
+                setIsProcessing(false);
               }
             }
           };
@@ -314,12 +318,16 @@ export default function CreatePage() {
 
     try {
       console.log('[summarizeVoiceContent] 开始生成标题和理由', { content, apiKey: !!apiKey });
-      const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/responses', {
+      
+      // 简化提示词，让模型更快理解任务
+      const prompt = `提取标题和理由。标题只包含作品名，无类型无书名号。理由简洁。JSON格式：{"title": "", "reason": ""}。内容：${content}`;
+      
+      const response = await fetch('/api/ark/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
         },
+        // 不再直接发送API Key，而是通过Serverless Function处理
         body: JSON.stringify({
           model: 'doubao-seed-2-0-pro-260215',
           input: [
@@ -328,7 +336,7 @@ export default function CreatePage() {
               content: [
                 {
                   type: 'input_text',
-                  text: `你是一个信息整理助手。根据用户提供的语音识别内容，分析并提取出作品的标题和推荐理由。标题应该只包含作品的名字，不要添加类型（如电视剧、电影、书等），也不要添加书名号《》。理由应该概括出推荐的核心原因，保持简洁。\n\n请以JSON格式输出，包含两个字段：title（标题）和reason（理由）。\n\n示例输出：\n{"title": "流浪地球2", "reason": "国产科幻电影的里程碑，特效震撼，剧情紧凑，充满家国情怀"}\n\n内容：${content}`,
+                  text: prompt,
                 },
               ],
             },
@@ -393,6 +401,7 @@ export default function CreatePage() {
 
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-gray-50">
       {/* 导航栏 */}
       <div className="bg-white border-b fixed top-0 left-0 right-0 z-10">
@@ -460,32 +469,53 @@ export default function CreatePage() {
             <div className="bg-white rounded-lg p-8 flex flex-col items-center">
               <button
                 onClick={handleVoiceRecord}
+                disabled={isProcessing}
                 className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
                   isRecording
                     ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                    : isProcessing
+                    ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-blue-500 hover:bg-blue-600'
                 } text-white shadow-lg`}
               >
                 <Mic size={40} />
               </button>
               <p className="mt-4 text-sm text-gray-600">
-                {isRecording ? '正在录音...' : '按住说话'}
-              </p>
-              <p className="mt-2 text-xs text-gray-500 text-center">
-                {isRecording 
-                  ? '请说出作品名称和想看的原因' 
-                  : '例如："标题：流浪地球3，原因：想看看中国科幻的新高度"'}
-              </p>
+                  {isRecording ? '正在录音...' : isProcessing ? 'AI正在处理...' : '点击开始录音'}
+                </p>
+                <p className="mt-2 text-xs text-gray-500 text-center">
+                  {isRecording 
+                    ? '请说出作品名称和想看的原因' 
+                    : isProcessing
+                    ? '正在分析语音内容...' 
+                    : '例如："流浪地球3，想看看中国科幻的新高度"'}
+                </p>
               {/* 显示识别的文字 */}
-              {recognizedText && (
+              {recognizedText && !isProcessing && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-md w-full max-w-sm">
                   <p className="text-sm text-gray-800">{recognizedText}</p>
                 </div>
               )}
             </div>
 
+            {/* 加载状态 */}
+            {isProcessing && (
+              <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+                <div className="flex justify-center space-x-2">
+                  {[...Array(3)].map((_, index) => (
+                    <div
+                      key={index}
+                      className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+                      style={{ animationDelay: `${index * 0.2}s` }}
+                    />
+                  ))}
+                </div>
+                <p className="mt-3 text-sm text-gray-600">正在分析语音内容...</p>
+              </div>
+            )}
+
             {/* 识别结果 */}
-            {(title || reasonOrLink) && (
+            {(title || reasonOrLink) && !isProcessing && (
               <>
                 <div className="bg-white rounded-lg p-4">
                   <label className="block font-medium text-gray-900 mb-2">
@@ -527,5 +557,6 @@ export default function CreatePage() {
         </button>
       </div>
     </div>
+    </PageTransition>
   );
 }

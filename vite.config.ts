@@ -27,8 +27,8 @@ export default defineConfig({
     },
   },
 
-  // 配置构建输出目录为docs
+  // 配置构建输出目录为dist
   build: {
-    outDir: 'docs',
+    outDir: 'dist',
   },
 })

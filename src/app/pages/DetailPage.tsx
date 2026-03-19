@@ -11,6 +11,7 @@ import {
 import { storage } from '../utils/storage';
 import { mockMatchItem, generateDetailedContent } from '../utils/mockData';
 import { Item, ItemType } from '../types';
+import { PageTransition } from '../components/PageTransition';
 
 const typeLabels = {
   book: '书',
@@ -35,9 +36,11 @@ export default function DetailPage() {
   const [chapters, setChapters] = useState<Array<{ title: string; description: string }>>([]);
   const [isGeneratingChapters, setIsGeneratingChapters] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadItem = async () => {
+      setIsLoading(true);
       if (id) {
         const foundItem = await storage.getItemById(id);
         if (foundItem) {
@@ -48,8 +51,9 @@ export default function DetailPage() {
           navigate('/');
         }
       }
+      setIsLoading(false);
     };
-    
+
     loadItem();
   }, [id, navigate]);
 
@@ -186,18 +190,19 @@ export default function DetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 导航栏 */}
-      <div className="bg-white border-b fixed top-0 left-0 right-0 z-10">
-        <div className="px-4 py-4 flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="p-1 hover:bg-gray-100 rounded-full">
-            <ArrowLeft size={24} className="text-gray-700" />
-          </button>
-          <h1 className="text-lg font-medium">详情</h1>
+    <PageTransition isLoading={isLoading}>
+      <div className="min-h-screen bg-gray-50">
+        {/* 导航栏 */}
+        <div className="bg-white border-b fixed top-0 left-0 right-0 z-10">
+          <div className="px-4 py-4 flex items-center gap-3">
+            <button onClick={() => navigate('/')} className="p-1 hover:bg-gray-100 rounded-full">
+              <ArrowLeft size={24} className="text-gray-700" />
+            </button>
+            <h1 className="text-lg font-medium">详情</h1>
+          </div>
         </div>
-      </div>
 
-      <div className="px-4 py-6 space-y-6 pt-20">
+        <div className="px-4 py-6 space-y-6 pt-20">
         {/* 基础信息区 */}
         <div className="bg-white rounded-lg p-4 space-y-3 mb-4">
           <div className="flex items-center gap-3">
@@ -523,6 +528,7 @@ export default function DetailPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageTransition>
   );
 }

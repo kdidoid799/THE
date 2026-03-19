@@ -16,6 +16,7 @@ export interface Item {
     name: string;
     url: string;
   }[];
+  chapters?: Array<{ title: string; description: string }>;
   createdat: number;
 }
 

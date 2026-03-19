@@ -43,6 +43,7 @@ export default function DetailPage() {
         if (foundItem) {
           setItem(foundItem);
           setEditedReason(foundItem.reason);
+          setChapters(foundItem.chapters || []);
         } else {
           navigate('/');
         }
@@ -91,6 +92,10 @@ export default function DetailPage() {
       // 调用新的生成详细内容函数
       const generatedChapters = await generateDetailedContent(item.title, item.type, item.duration);
       setChapters(generatedChapters);
+      
+      // 保存生成的章节到storage
+      await storage.updateItem(item.id, { chapters: generatedChapters });
+      setItem({ ...item, chapters: generatedChapters });
     } catch (error) {
       console.error('生成详细内容失败:', error);
       // 失败时使用默认数据

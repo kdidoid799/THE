@@ -10,6 +10,8 @@ interface InferParams {
 // 使用大模型根据标题和原因推断类型：book / movie / series
 export async function inferItemType({ title, reason }: InferParams): Promise<InferredItemType> {
   const apiKey = import.meta.env.VITE_ARK_API_KEY;
+  console.log('[inferItemType] API Key:', apiKey);
+  console.log('[inferItemType] 环境变量:', import.meta.env);
 
   // 如果标题为"未命名链接"，直接返回默认类型，避免不必要的 API 调用
   if (title === '未命名链接') {
@@ -44,27 +46,29 @@ export async function inferItemType({ title, reason }: InferParams): Promise<Inf
 
   try {
     console.log('[inferItemType] 开始推断类型', { title, reason, apiKey: !!apiKey });
-    const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+    // 构建请求数据
+  const payload = {
+    model: 'doubao-seed-2-0-pro-260215',
+    messages: [
+      {
+        role: 'user',
+        content: `你是一个分类助手。根据用户提供的标题和一句话原因/链接，判断它是"书籍、电影、剧集"中的哪一类。只输出一个英文单词：book、movie 或 series。\n标题: ${title}\n原因或链接: ${reason || '（无）'}`,
       },
-      body: JSON.stringify({
-        model: 'doubao-seed-2-0-pro-260215',
-        input: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: `你是一个分类助手。根据用户提供的标题和一句话原因/链接，判断它是"书籍、电影、剧集"中的哪一类。只输出一个英文单词：book、movie 或 series。\n标题: ${title}\n原因或链接: ${reason || '（无）'}`,
-              },
-            ],
-          },
-        ],
-      }),
-    });
+    ],
+  };
+
+  // 使用代理路径调用API，Authorization头由代理处理
+  const apiUrl = '/api/ark/api/v3/chat/completions';
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
 
     console.log('[inferItemType] Ark 响应状态', response.status);
     

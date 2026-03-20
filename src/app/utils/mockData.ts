@@ -137,26 +137,28 @@ export async function mockMatchItem(title: string, type: string): Promise<Partia
 
   try {
     console.log('[mockMatchItem] 开始生成匹配信息', { title, type, apiKey: !!apiKey });
-    const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/responses', {
+    // 构建请求数据
+    const payload = {
+      model: 'doubao-seed-2-0-pro-260215',
+      messages: [
+        {
+          role: 'user',
+          content: `你是一个信息整理助手。根据用户提供的作品标题和类型（book、movie、series），生成一个 JSON，对应字段：matchStatus（matched、failed、pending 之一）、duration（估算总时长，单位分钟，整数）、keyPoints（字符串数组，3~5 条要点）、tags（字符串数组，2~6 个标签）、source（包含 name 和 url 两个字段，可以用常见中文内容平台）。只返回 JSON，不要多余文字。\n标题: ${title}\n类型: ${type}`,
+        },
+      ],
+    };
+
+    // 使用代理路径调用API，Authorization头由代理处理
+  const apiUrl = '/api/ark/api/v3/chat/completions';
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+      
+    const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'doubao-seed-2-0-pro-260215',
-        input: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: `你是一个信息整理助手。根据用户提供的作品标题和类型（book、movie、series），生成一个 JSON，对应字段：matchStatus（matched、failed、pending 之一）、duration（估算总时长，单位分钟，整数）、keyPoints（字符串数组，3~5 条要点）、tags（字符串数组，2~6 个标签）、source（包含 name 和 url 两个字段，可以用常见中文内容平台）。只返回 JSON，不要多余文字。\n标题: ${title}\n类型: ${type}`,
-              },
-            ],
-          },
-        ],
-      }),
+      headers,
+      body: JSON.stringify(payload),
     });
 
     console.log('[mockMatchItem] Ark 响应状态', response.status);
@@ -359,23 +361,20 @@ export async function generateDetailedContent(title: string, type: string, durat
         return [];
     }
     
-    const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/responses', {
+    // 统一使用API代理，避免CORS问题
+    const apiUrl = '/api/ark/responses';
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'doubao-seed-2-0-pro-260215',
-        input: [
+        messages: [
           {
             role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: prompt,
-              },
-            ],
+            content: prompt,
           },
         ],
       }),
